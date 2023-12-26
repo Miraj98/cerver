@@ -9,8 +9,6 @@
 #define PORT 8080
 #define MAX_HANDLERS 50
 #define MAX_REQ_BUF_SIZE 2048
-#define BASE_HEADER_KEYS { "host", "content-type", "content-length", "authorization" }
-#define BASE_HEADER_KEYS_LEN sizeof(BASE_HEADER_KEYS) / sizeof(char *)
 
 char *tokenizer(char **base, const char *delim) {
     size_t len = strlen(*base);
@@ -220,12 +218,11 @@ HTTP_Response ok_resp(HTTP_Request *req) {
 
 int main(void) {
     Router *router = create_router();
-    add_handler(router, GET, "/", ok_resp);
-
     if (router == NULL) {
         fprintf(stderr, "Unable to create router\n");
         exit(0);
     }
+    add_handler(router, GET, "/", ok_resp);
     int sock_fd = socket(PF_INET, SOCK_STREAM, 0);
     if (sock_fd == -1)  {
         fprintf(stderr, "Unable to open a socket\n");
@@ -248,14 +245,10 @@ int main(void) {
 
     struct sockaddr_in client_addr_info = {0};
     size_t client_addr_len = sizeof(client_addr_info);
-    int incoming = accept(sock_fd, (struct sockaddr *)&client_addr_info, (socklen_t*)&client_addr_len);
-    /*
-    char *msg = "Hello, world\n";
-    send(incoming, msg, strlen(msg),0);
-    */
-
+    int incoming;
     char buffer[MAX_REQ_BUF_SIZE];
     while (1) {
+        incoming =  accept(sock_fd, (struct sockaddr *)&client_addr_info, (socklen_t*)&client_addr_len);
         memset(buffer, 0, MAX_REQ_BUF_SIZE);
         int bytes_read = read(incoming, buffer, MAX_REQ_BUF_SIZE - 1);
         if (bytes_read <= 0) break;
@@ -265,7 +258,6 @@ int main(void) {
         HTTP_Response http_response = exec_req_handler(router, &req);
         char buf[10240] = {0};
         char *final = serialize_response(buf, &http_response);
-        // char *resp = "HTTP/1.1 200 OK\r\n\r\nHello world\r\n";
         send(incoming, final, strlen(final), 0);
         close(incoming);
     }
